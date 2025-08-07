@@ -142,12 +142,77 @@
             border-radius: 8px;
             padding: 20px;
             border: 1px solid #e0e0e0;
+            margin: 10px 0;
+            width: 100%;
+            min-height: 300px;
+            position: relative;
+            cursor: move;
+            transition: all 0.3s ease;
+        }
+
+        .chart-container:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+
+        .chart-container.dragging {
+            opacity: 0.7;
+            transform: rotate(5deg);
+            z-index: 1000;
+        }
+
+        .chart-container.drop-target {
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3);
+            background: #f0f4ff;
+        }
+
+        .charts-container {
+            width: 100%;
+        }
+
+        .charts-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-height: 200px;
+            padding: 20px;
+            border: 2px dashed #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .charts-grid.empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-style: italic;
         }
 
         .chart-container h3 {
             margin-bottom: 20px;
             color: #333;
             font-size: 1.3rem;
+        }
+
+        .chart-container.overview-chart {
+            border: 2px solid #667eea !important;
+            background: linear-gradient(135deg, #f8f9ff 0%, #e8f0ff 100%) !important;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
+            position: relative;
+        }
+
+        .chart-container.overview-chart::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #667eea, #764ba2, #667eea);
+            border-radius: 10px;
+            z-index: -1;
+            opacity: 0.3;
         }
 
         .chart-wrapper {
@@ -353,18 +418,13 @@
             <div id="dataContainer" class="data-sections" style="display: none;">
                 <div class="data-list">
                     <h3>📊 Available Data</h3>
-                    <div style="margin-bottom: 15px;">
-                        <button id="clearSelection" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                            Clear All
-                        </button>
-                    </div>
                     <div id="dataList"></div>
                 </div>
                 
-                <div class="chart-container">
-                    <h3 id="chartTitle">Select data to visualize</h3>
-                    <div class="chart-wrapper">
-                        <canvas id="dataChart"></canvas>
+                <div id="chartsContainer" class="charts-container">
+                    <h3 id="chartsTitle">Select metrics to visualize</h3>
+                    <div id="chartsGrid" class="charts-grid">
+                        <!-- Dynamic charts will be added here -->
                     </div>
                 </div>
             </div>

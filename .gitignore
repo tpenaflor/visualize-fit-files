@@ -10,6 +10,9 @@ yarn-error.log*
 # Debug files
 debug-*.js
 
+# Documentation (temporary)
+REFACTORING.md
+
 # Build outputs
 dist/
 build/
