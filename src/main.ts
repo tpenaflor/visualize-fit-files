@@ -16,6 +16,7 @@ class FitFileAnalyzer {
   private chart: Chart | null = null;
   private fitData: FitData[] = [];
   private selectedMetrics: Set<string> = new Set();
+  private activityType: string = 'unknown';
 
   constructor() {
     this.initializeEventListeners();
@@ -154,6 +155,11 @@ class FitFileAnalyzer {
     console.log('Is array:', Array.isArray(data));
     console.log('Available keys:', Object.keys(data));
     
+    // Detect activity type from session data
+    const session = data.sessions?.[0] || {};
+    this.activityType = this.detectActivityType(session.sport, session.sub_sport);
+    console.log('Detected activity type:', this.activityType);
+    
     // Check for specific expected running metrics
     const expectedMetrics = [
       'power', 'enhanced_speed', 'heart_rate', 'cadence', 'enhanced_altitude', 
@@ -197,6 +203,53 @@ class FitFileAnalyzer {
     this.showDataContainer(true);
   }
 
+  private detectActivityType(sport: string, subSport: string): string {
+    // Normalize sport and sub_sport to lowercase for comparison
+    const sportLower = (sport || '').toLowerCase();
+    const subSportLower = (subSport || '').toLowerCase();
+    
+    // Check for running activities
+    if (sportLower === 'running' || 
+        subSportLower.includes('running') || 
+        subSportLower === 'trail' ||
+        subSportLower === 'track') {
+      return 'running';
+    }
+    
+    // Check for cycling activities
+    if (sportLower === 'cycling' || 
+        sportLower === 'biking' ||
+        subSportLower.includes('bike') ||
+        subSportLower.includes('cycling') ||
+        subSportLower === 'road' ||
+        subSportLower === 'mountain' ||
+        subSportLower === 'gravel') {
+      return 'cycling';
+    }
+    
+    return 'unknown';
+  }
+
+  private processMetricValue(metric: string, value: any): any {
+    // Special handling for speed based on activity type
+    if (metric === 'enhanced_speed' && value !== null && value !== undefined) {
+      if (this.activityType === 'running') {
+        // Convert m/s to pace (min/km)
+        // pace = 1000 / (speed_in_m_per_s * 60) = 16.67 / speed_in_m_per_s
+        if (value > 0) {
+          return 1000 / (value * 60); // minutes per kilometer
+        }
+        return 0;
+      } else if (this.activityType === 'cycling') {
+        // Convert m/s to km/h
+        return value * 3.6;
+      }
+    }
+    
+    // Return original value for all other metrics
+    return value;
+  }
+
   private extractAllPossibleData(data: any): void {
     // Check for standard FIT data structures
     const dataKeys = Object.keys(data);
@@ -229,10 +282,13 @@ class FitFileAnalyzer {
             // Create separate entries for each available metric
             for (const metric of availableMetrics) {
               const metricDisplayName = this.getMetricDisplayName(metric);
-              const filteredRecords = value.map(record => ({
-                timestamp: record.timestamp,
-                [metric]: record[metric]
-              })).filter(record => record[metric] !== undefined && record[metric] !== null);
+              const filteredRecords = value.map(record => {
+                const processedRecord = {
+                  timestamp: record.timestamp,
+                  [metric]: this.processMetricValue(metric, record[metric])
+                };
+                return processedRecord;
+              }).filter(record => record[metric] !== undefined && record[metric] !== null);
               
               if (filteredRecords.length > 0) {
                 this.fitData.push({
@@ -252,7 +308,7 @@ class FitFileAnalyzer {
   private getMetricDisplayName(metric: string): string {
     const displayNames: { [key: string]: string } = {
       'power': '⚡ Power',
-      'enhanced_speed': '🏃 Speed',
+      'enhanced_speed': this.getSpeedDisplayName(),
       'heart_rate': '❤️ Heart Rate',
       'cadence': '👟 Cadence',
       'enhanced_altitude': '⛰️ Elevation',
@@ -265,10 +321,19 @@ class FitFileAnalyzer {
     return displayNames[metric] || metric;
   }
 
+  private getSpeedDisplayName(): string {
+    if (this.activityType === 'running') {
+      return '🏃 Pace';
+    } else if (this.activityType === 'cycling') {
+      return '🚴 Speed';
+    }
+    return '🏃 Speed';
+  }
+
   private getMetricDescription(metric: string): string {
     const descriptions: { [key: string]: string } = {
-      'power': 'Running power output in watts',
-      'enhanced_speed': 'Running speed in meters per second',
+      'power': 'Running/cycling power output in watts',
+      'enhanced_speed': this.getSpeedDescription(),
       'heart_rate': 'Heart rate in beats per minute',
       'cadence': 'Step rate in steps per minute',
       'enhanced_altitude': 'Elevation profile in meters',
@@ -279,6 +344,15 @@ class FitFileAnalyzer {
       'ground_contact_time': 'Ground contact time in milliseconds'
     };
     return descriptions[metric] || `${metric} data`;
+  }
+
+  private getSpeedDescription(): string {
+    if (this.activityType === 'running') {
+      return 'Running pace in minutes per kilometer';
+    } else if (this.activityType === 'cycling') {
+      return 'Cycling speed in kilometers per hour';
+    }
+    return 'Speed data in original units';
   }
 
   private displayFileInfo(data: any, fileName: string): void {
@@ -434,7 +508,7 @@ class FitFileAnalyzer {
   private getStatUnit(metric: string): string {
     const units: { [key: string]: string } = {
       'power': 'W',
-      'enhanced_speed': 'm/s',
+      'enhanced_speed': this.getSpeedUnit(),
       'heart_rate': 'bpm',
       'cadence': 'spm',
       'enhanced_altitude': 'm',
@@ -445,6 +519,15 @@ class FitFileAnalyzer {
       'ground_contact_time': 'ms'
     };
     return units[metric] || '';
+  }
+
+  private getSpeedUnit(): string {
+    if (this.activityType === 'running') {
+      return 'min/km';
+    } else if (this.activityType === 'cycling') {
+      return 'km/h';
+    }
+    return 'm/s';
   }
 
   private createAggregatedChart(): void {
@@ -606,8 +689,8 @@ class FitFileAnalyzer {
         backgroundColor: 'rgba(255, 205, 86, 0.2)'
       },
       'enhanced_speed': {
-        label: 'Speed',
-        unit: 'Speed (m/s)',
+        label: this.activityType === 'running' ? 'Pace' : 'Speed',
+        unit: this.getSpeedChartUnit(),
         borderColor: 'rgb(54, 162, 235)',
         backgroundColor: 'rgba(54, 162, 235, 0.2)'
       },
@@ -667,6 +750,15 @@ class FitFileAnalyzer {
       borderColor: 'rgb(100, 100, 100)',
       backgroundColor: 'rgba(100, 100, 100, 0.2)'
     };
+  }
+
+  private getSpeedChartUnit(): string {
+    if (this.activityType === 'running') {
+      return 'Pace (min/km)';
+    } else if (this.activityType === 'cycling') {
+      return 'Speed (km/h)';
+    }
+    return 'Speed (m/s)';
   }
 
   private showLoading(show: boolean, message?: string): void {

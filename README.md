@@ -16,7 +16,9 @@ A TypeScript web application that processes FIT (Flexible and Interoperable Data
 ## Supported Metrics
 
 - **⚡ Power**: Running/cycling power output in watts
-- **🏃 Speed**: Enhanced speed data in m/s
+- **🏃 Speed/Pace**:
+  - **Running**: Pace in minutes per kilometer (min/km)
+  - **Cycling**: Speed in kilometers per hour (km/h)
 - **❤️ Heart Rate**: Heart rate in beats per minute
 - **👟 Cadence**: Step rate in steps per minute
 - **⛰️ Elevation**: Enhanced altitude profile in meters
@@ -99,6 +101,9 @@ A TypeScript web application that processes FIT (Flexible and Interoperable Data
 
 - Filters for expected fitness metrics only
 - Enhanced field name support (enhanced_speed, enhanced_altitude)
+- **Smart Speed Interpretation**: Automatically detects activity type and displays:
+  - Running activities: Pace in min/km
+  - Cycling activities: Speed in km/h
 - Comprehensive data validation and error handling
 
 ## Technical Details
