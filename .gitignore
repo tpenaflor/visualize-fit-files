@@ -7,6 +7,9 @@ yarn-error.log*
 # FIT files
 *.fit
 
+# Debug files
+debug-*.js
+
 # Build outputs
 dist/
 build/

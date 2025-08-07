@@ -12,11 +12,17 @@ interface FitData {
   description: string;
 }
 
+interface ManufacturerInfo {
+  name: string;
+  fieldMappings: { [key: string]: string[] };
+}
+
 class FitFileAnalyzer {
   private chart: Chart | null = null;
   private fitData: FitData[] = [];
   private selectedMetrics: Set<string> = new Set();
   private activityType: string = 'unknown';
+  private manufacturerInfo: ManufacturerInfo | null = null;
 
   constructor() {
     this.initializeEventListeners();
@@ -160,6 +166,10 @@ class FitFileAnalyzer {
     this.activityType = this.detectActivityType(session.sport, session.sub_sport);
     console.log('Detected activity type:', this.activityType);
     
+    // Detect manufacturer and field mappings
+    this.manufacturerInfo = this.detectManufacturer(data);
+    console.log('Detected manufacturer:', this.manufacturerInfo?.name || 'Unknown');
+    
     // Check for specific expected running metrics
     const expectedMetrics = [
       'power', 'enhanced_speed', 'heart_rate', 'cadence', 'enhanced_altitude', 
@@ -230,9 +240,165 @@ class FitFileAnalyzer {
     return 'unknown';
   }
 
+  private detectManufacturer(data: any): ManufacturerInfo {
+    // Try multiple sources for manufacturer information
+    let manufacturer = '';
+    let productName = '';
+    
+    // 1. Check file_id first
+    const fileId = data.file_id || {};
+    if (fileId.manufacturer) {
+      manufacturer = (fileId.manufacturer || '').toLowerCase();
+      productName = fileId.product || '';
+      console.log('Found manufacturer in file_id:', { manufacturer, productName });
+    }
+    
+    // 2. Check device_infos array (main recording device usually has device_index: 0)
+    if (!manufacturer && data.device_infos && data.device_infos.length > 0) {
+      const mainDevice = data.device_infos.find((device: any) => device.device_index === 0) || 
+                         data.device_infos[0];
+      if (mainDevice && mainDevice.manufacturer) {
+        manufacturer = (mainDevice.manufacturer || '').toLowerCase();
+        productName = mainDevice.product_name || '';
+        console.log('Found manufacturer in device_infos:', { manufacturer, productName });
+      }
+    }
+    
+    // 3. Check devices array as fallback
+    if (!manufacturer && data.devices && data.devices.length > 0) {
+      const mainDevice = data.devices.find((device: any) => device.device_index === 0) || 
+                         data.devices[0];
+      if (mainDevice && mainDevice.manufacturer) {
+        manufacturer = (mainDevice.manufacturer || '').toLowerCase();
+        productName = mainDevice.product_name || '';
+        console.log('Found manufacturer in devices:', { manufacturer, productName });
+      }
+    }
+    
+    console.log('Final manufacturer detection:', { manufacturer, productName });
+    
+    // Garmin detection
+    if (manufacturer === 'garmin' || manufacturer.includes('garmin') || 
+        productName.toLowerCase().includes('garmin')) {
+      return {
+        name: 'Garmin',
+        fieldMappings: this.getGarminFieldMappings()
+      };
+    }
+    
+    // Wahoo detection  
+    if (manufacturer === 'wahoo' || manufacturer.includes('wahoo') || 
+        manufacturer === 'wahoo_fitness' || productName.toLowerCase().includes('elemnt') ||
+        productName.toLowerCase().includes('kickr')) {
+      return {
+        name: 'Wahoo',
+        fieldMappings: this.getWahooFieldMappings()
+      };
+    }
+    
+    // Polar detection
+    if (manufacturer === 'polar' || manufacturer.includes('polar') ||
+        productName.toLowerCase().includes('polar')) {
+      return {
+        name: 'Polar',
+        fieldMappings: this.getPolarFieldMappings()
+      };
+    }
+    
+    // Suunto detection
+    if (manufacturer === 'suunto' || manufacturer.includes('suunto') ||
+        productName.toLowerCase().includes('suunto')) {
+      return {
+        name: 'Suunto',
+        fieldMappings: this.getSuuntoFieldMappings()
+      };
+    }
+    
+    // Default/Unknown manufacturer - use comprehensive field list
+    return {
+      name: `Unknown${productName ? ` (${productName})` : ''}`,
+      fieldMappings: this.getGenericFieldMappings()
+    };
+  }
+
+  private getGarminFieldMappings(): { [key: string]: string[] } {
+    return {
+      'power': ['power'],
+      'speed': ['enhanced_speed', 'speed'],
+      'heart_rate': ['heart_rate'],
+      'cadence': ['cadence'],
+      'altitude': ['enhanced_altitude', 'altitude'],
+      'stride_length': ['stride_length'],
+      'vertical_oscillation': ['vertical_oscillation'],
+      'temperature': ['temperature'],
+      'respiration_rate': ['respiration_rate'],
+      'ground_contact_time': ['ground_contact_time']
+    };
+  }
+
+  private getWahooFieldMappings(): { [key: string]: string[] } {
+    return {
+      'power': ['power'],
+      'speed': ['speed', 'enhanced_speed'],
+      'heart_rate': ['heart_rate'],
+      'cadence': ['cadence'],
+      'altitude': ['altitude', 'enhanced_altitude'],
+      'stride_length': ['stride_length'],
+      'vertical_oscillation': ['vertical_oscillation'],
+      'temperature': ['temperature'],
+      'respiration_rate': ['respiration_rate'],
+      'ground_contact_time': ['ground_contact_time']
+    };
+  }
+
+  private getPolarFieldMappings(): { [key: string]: string[] } {
+    return {
+      'power': ['power'],
+      'speed': ['speed', 'enhanced_speed'],
+      'heart_rate': ['heart_rate'],
+      'cadence': ['cadence'],
+      'altitude': ['altitude', 'enhanced_altitude'],
+      'stride_length': ['stride_length'],
+      'vertical_oscillation': ['vertical_oscillation'],
+      'temperature': ['temperature'],
+      'respiration_rate': ['respiration_rate'],
+      'ground_contact_time': ['ground_contact_time']
+    };
+  }
+
+  private getSuuntoFieldMappings(): { [key: string]: string[] } {
+    return {
+      'power': ['power'],
+      'speed': ['speed', 'enhanced_speed'],
+      'heart_rate': ['heart_rate'],
+      'cadence': ['cadence'],
+      'altitude': ['altitude', 'enhanced_altitude'],
+      'stride_length': ['stride_length'],
+      'vertical_oscillation': ['vertical_oscillation'],
+      'temperature': ['temperature'],
+      'respiration_rate': ['respiration_rate'],
+      'ground_contact_time': ['ground_contact_time']
+    };
+  }
+
+  private getGenericFieldMappings(): { [key: string]: string[] } {
+    return {
+      'power': ['power'],
+      'speed': ['enhanced_speed', 'speed'],
+      'heart_rate': ['heart_rate'],
+      'cadence': ['cadence'],
+      'altitude': ['enhanced_altitude', 'altitude'],
+      'stride_length': ['stride_length'],
+      'vertical_oscillation': ['vertical_oscillation'],
+      'temperature': ['temperature'],
+      'respiration_rate': ['respiration_rate'],
+      'ground_contact_time': ['ground_contact_time']
+    };
+  }
+
   private processMetricValue(metric: string, value: any): any {
     // Special handling for speed based on activity type
-    if (metric === 'enhanced_speed' && value !== null && value !== undefined) {
+    if (metric === 'speed' && value !== null && value !== undefined) {
       if (this.activityType === 'running') {
         // Convert m/s to pace (min/km)
         // pace = 1000 / (speed_in_m_per_s * 60) = 16.67 / speed_in_m_per_s
@@ -254,12 +420,10 @@ class FitFileAnalyzer {
     // Check for standard FIT data structures
     const dataKeys = Object.keys(data);
     
-    // Define the expected fitness metrics we want to show
-    const expectedFitnessMetrics = [
-      'power', 'enhanced_speed', 'heart_rate', 'cadence', 'enhanced_altitude', 
-      'stride_length', 'vertical_oscillation', 'temperature',
-      'respiration_rate', 'ground_contact_time'
-    ];
+    // Get available metric types from manufacturer-specific mappings
+    const availableMetricTypes = this.manufacturerInfo ? 
+      Object.keys(this.manufacturerInfo.fieldMappings) : 
+      ['power', 'speed', 'heart_rate', 'cadence', 'altitude'];
     
     for (const key of dataKeys) {
       const value = data[key];
@@ -273,34 +437,55 @@ class FitFileAnalyzer {
           const itemKeys = Object.keys(firstItem);
           console.log(`${key} item structure:`, itemKeys);
           
-          // Find which expected metrics are available in this data
-          const availableMetrics = expectedFitnessMetrics.filter(metric => itemKeys.includes(metric));
+          // Find which metrics are available using manufacturer mappings
+          const foundMetrics = this.findAvailableMetrics(itemKeys, availableMetricTypes);
           
-          if (availableMetrics.length > 0) {
-            console.log(`✅ ${key} contains expected metrics:`, availableMetrics);
-            
-            // Create separate entries for each available metric
-            for (const metric of availableMetrics) {
-              const metricDisplayName = this.getMetricDisplayName(metric);
-              const filteredRecords = value.map(record => {
-                const processedRecord = {
-                  timestamp: record.timestamp,
-                  [metric]: this.processMetricValue(metric, record[metric])
-                };
-                return processedRecord;
-              }).filter(record => record[metric] !== undefined && record[metric] !== null);
-              
-              if (filteredRecords.length > 0) {
-                this.fitData.push({
-                  type: metric,
-                  name: `${metricDisplayName} (${filteredRecords.length} data points)`,
-                  records: filteredRecords,
-                  description: this.getMetricDescription(metric)
-                });
-              }
-            }
+          if (foundMetrics.length > 0) {
+            console.log(`✅ ${key} contains metrics:`, foundMetrics);
+            this.processMetricsForManufacturer(value, foundMetrics);
           }
         }
+      }
+    }
+  }
+
+  private findAvailableMetrics(itemKeys: string[], metricTypes: string[]): Array<{type: string, field: string}> {
+    const foundMetrics: Array<{type: string, field: string}> = [];
+    
+    if (!this.manufacturerInfo) return foundMetrics;
+    
+    for (const metricType of metricTypes) {
+      const possibleFields = this.manufacturerInfo.fieldMappings[metricType] || [];
+      
+      for (const field of possibleFields) {
+        if (itemKeys.includes(field)) {
+          foundMetrics.push({ type: metricType, field });
+          break; // Use first matching field for this metric type
+        }
+      }
+    }
+    
+    return foundMetrics;
+  }
+
+  private processMetricsForManufacturer(value: any[], foundMetrics: Array<{type: string, field: string}>): void {
+    for (const metric of foundMetrics) {
+      const metricDisplayName = this.getMetricDisplayName(metric.type);
+      const filteredRecords = value.map(record => {
+        const processedRecord = {
+          timestamp: record.timestamp,
+          [metric.type]: this.processMetricValue(metric.type, record[metric.field])
+        };
+        return processedRecord;
+      }).filter(record => record[metric.type] !== undefined && record[metric.type] !== null);
+      
+      if (filteredRecords.length > 0) {
+        this.fitData.push({
+          type: metric.type,
+          name: `${metricDisplayName} (${filteredRecords.length} data points)`,
+          records: filteredRecords,
+          description: this.getMetricDescription(metric.type)
+        });
       }
     }
   }
@@ -308,10 +493,10 @@ class FitFileAnalyzer {
   private getMetricDisplayName(metric: string): string {
     const displayNames: { [key: string]: string } = {
       'power': '⚡ Power',
-      'enhanced_speed': this.getSpeedDisplayName(),
+      'speed': this.getSpeedDisplayName(),
       'heart_rate': '❤️ Heart Rate',
       'cadence': '👟 Cadence',
-      'enhanced_altitude': '⛰️ Elevation',
+      'altitude': '⛰️ Elevation',
       'stride_length': '📏 Stride Length',
       'vertical_oscillation': '📊 Vertical Oscillation',
       'temperature': '🌡️ Temperature',
@@ -333,10 +518,10 @@ class FitFileAnalyzer {
   private getMetricDescription(metric: string): string {
     const descriptions: { [key: string]: string } = {
       'power': 'Running/cycling power output in watts',
-      'enhanced_speed': this.getSpeedDescription(),
+      'speed': this.getSpeedDescription(),
       'heart_rate': 'Heart rate in beats per minute',
       'cadence': 'Step rate in steps per minute',
-      'enhanced_altitude': 'Elevation profile in meters',
+      'altitude': 'Elevation profile in meters',
       'stride_length': 'Stride length in meters',
       'vertical_oscillation': 'Vertical movement in millimeters',
       'temperature': 'Environmental temperature in Celsius',
@@ -361,11 +546,13 @@ class FitFileAnalyzer {
 
     const activity = data.activity || {};
     const session = data.sessions?.[0] || {};
+    const manufacturerName = this.manufacturerInfo?.name || 'Unknown';
 
     fileInfoElement.innerHTML = `
       <div class="file-info">
         <h4>📄 File Information</h4>
         <p><strong>File:</strong> ${fileName}</p>
+        <p><strong>Manufacturer:</strong> ${manufacturerName}</p>
         <p><strong>Sport:</strong> ${session.sport || 'Unknown'}</p>
         <p><strong>Sub Sport:</strong> ${session.sub_sport || 'Unknown'}</p>
         <p><strong>Device:</strong> ${data.file_id?.manufacturer || 'Unknown'} ${data.file_id?.product || ''}</p>
@@ -508,10 +695,10 @@ class FitFileAnalyzer {
   private getStatUnit(metric: string): string {
     const units: { [key: string]: string } = {
       'power': 'W',
-      'enhanced_speed': this.getSpeedUnit(),
+      'speed': this.getSpeedUnit(),
       'heart_rate': 'bpm',
       'cadence': 'spm',
-      'enhanced_altitude': 'm',
+      'altitude': 'm',
       'stride_length': 'm',
       'vertical_oscillation': 'mm',
       'temperature': '°C',
@@ -580,8 +767,8 @@ class FitFileAnalyzer {
 
     // Group metrics by similar scales for better visualization
     const powerMetrics = ['power'];
-    const speedMetrics = ['enhanced_speed'];
-    const distanceMetrics = ['enhanced_altitude', 'stride_length'];
+    const speedMetrics = ['speed'];
+    const distanceMetrics = ['altitude', 'stride_length'];
     const timeMetrics = ['ground_contact_time'];
     const smallValueMetrics = ['vertical_oscillation'];
     const temperatureMetrics = ['temperature'];
@@ -688,7 +875,7 @@ class FitFileAnalyzer {
         borderColor: 'rgb(255, 205, 86)',
         backgroundColor: 'rgba(255, 205, 86, 0.2)'
       },
-      'enhanced_speed': {
+      'speed': {
         label: this.activityType === 'running' ? 'Pace' : 'Speed',
         unit: this.getSpeedChartUnit(),
         borderColor: 'rgb(54, 162, 235)',
@@ -706,7 +893,7 @@ class FitFileAnalyzer {
         borderColor: 'rgb(153, 102, 255)',
         backgroundColor: 'rgba(153, 102, 255, 0.2)'
       },
-      'enhanced_altitude': {
+      'altitude': {
         label: 'Elevation',
         unit: 'Meters (m)',
         borderColor: 'rgb(75, 192, 192)',

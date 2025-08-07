@@ -7,6 +7,7 @@ A TypeScript web application that processes FIT (Flexible and Interoperable Data
 - 📁 **File Upload**: Drag and drop or select FIT files from your device
 - 🧪 **Test Mode**: Built-in sample FIT file for quick testing
 - 📊 **Data Analysis**: Automatically processes and categorizes fitness data
+- 🏭 **Multi-Manufacturer Support**: Works with Garmin, Wahoo, Polar, Suunto, and other FIT devices
 - 📈 **Multi-Metric Charts**: Visualize multiple metrics simultaneously with intelligent Y-axis grouping
 - 📊 **Real-Time Statistics**: View average and maximum values for selected metrics
 - 🎯 **Dynamic Updates**: Charts and statistics update instantly as you select/deselect metrics
@@ -99,8 +100,12 @@ A TypeScript web application that processes FIT (Flexible and Interoperable Data
 
 ### Enhanced Data Processing
 
-- Filters for expected fitness metrics only
-- Enhanced field name support (enhanced_speed, enhanced_altitude)
+- **Multi-Manufacturer Support**: Automatically detects and handles field variations from:
+  - **Garmin**: Enhanced field support (enhanced_speed, enhanced_altitude)
+  - **Wahoo**: Standard and enhanced field mapping
+  - **Polar**: Manufacturer-specific field handling
+  - **Suunto**: Adaptive field detection
+  - **Other devices**: Generic field mapping for unknown manufacturers
 - **Smart Speed Interpretation**: Automatically detects activity type and displays:
   - Running activities: Pace in min/km
   - Cycling activities: Speed in km/h
@@ -155,8 +160,10 @@ The application ignores `.fit` files in version control to protect privacy:
 
 **No data showing**:
 
-- The app filters for specific fitness metrics (power, heart rate, speed, etc.)
-- Some older devices may use different field names
+- The app automatically detects your device manufacturer and maps appropriate fields
+- Different manufacturers use different field names (e.g., 'speed' vs 'enhanced_speed')
+- The app will show which manufacturer was detected in the file information
+- Try files from Garmin, Wahoo, Polar, or Suunto devices
 
 **Chart performance**:
 
