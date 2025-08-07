@@ -61,17 +61,20 @@ A TypeScript web application that processes FIT (Flexible and Interoperable Data
 
 ## How to Use
 
-1. **Upload a FIT File**: 
+1. **Upload a FIT File**:
+
    - Click "📁 Choose FIT File" and select a `.fit` file from your fitness device
    - Or click "🧪 Test with sample FIT file" to try it immediately
 
 2. **View File Info**: See basic information about your activity including device and sport type
 
 3. **Select Metrics**: Click on any fitness metrics in the left panel to add them to the chart
+
    - ✅ Selected metrics show with a checkmark
    - Multiple metrics can be selected simultaneously
 
-4. **Explore Visualizations**: 
+4. **Explore Visualizations**:
+
    - **Chart**: Multi-metric time-series chart with intelligent Y-axis grouping
    - **Statistics**: Average and maximum values displayed below the chart
 
@@ -80,17 +83,20 @@ A TypeScript web application that processes FIT (Flexible and Interoperable Data
 ## Key Features Explained
 
 ### Multi-Metric Visualization
+
 - Select multiple metrics to see them plotted together
 - Intelligent Y-axis grouping (power, speed, heart rate, etc. on separate axes)
 - Real-time chart updates as you select/deselect metrics
 
 ### Statistics Dashboard
+
 - **Average Values**: Mean values across the entire activity
 - **Maximum Values**: Peak performance metrics
 - **Smart Units**: Appropriate units for each metric (W, m/s, bpm, etc.)
 - **Dynamic Updates**: Statistics update instantly with metric selection
 
 ### Enhanced Data Processing
+
 - Filters for expected fitness metrics only
 - Enhanced field name support (enhanced_speed, enhanced_altitude)
 - Comprehensive data validation and error handling
@@ -130,25 +136,30 @@ npm run preview
 ## File Handling
 
 The application ignores `.fit` files in version control to protect privacy:
+
 - Sample files are available in the `public/` directory
 - Upload your own FIT files for analysis
 - All processing happens locally in your browser
 
 ## Troubleshooting
 
-**File not parsing**: 
+**File not parsing**:
+
 - Ensure your file is a valid FIT file from a supported device
 - Try the sample file first to verify functionality
 
-**No data showing**: 
+**No data showing**:
+
 - The app filters for specific fitness metrics (power, heart rate, speed, etc.)
 - Some older devices may use different field names
 
-**Chart performance**: 
+**Chart performance**:
+
 - Large FIT files with many data points may take time to process
 - Use the loading indicator to track progress
 
 **Statistics not showing**:
+
 - Statistics only appear when metrics are selected
 - Ensure selected metrics contain valid numeric data
 
