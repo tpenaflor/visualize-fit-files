@@ -7,7 +7,8 @@
         "dev": "vite",
         "build": "tsc && vite build",
         "preview": "vite preview",
-        "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+        "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+        "ai:server": "node server/index.js"
     },
     "devDependencies": {
         "@types/node": "^20.5.0",
@@ -21,6 +22,8 @@
         "fit-file-parser": "^1.9.6",
         "chart.js": "^4.3.3",
         "chartjs-adapter-date-fns": "^3.0.0",
-        "date-fns": "^2.30.0"
+        "date-fns": "^2.30.0",
+        "express": "^4.19.2",
+        "cors": "^2.8.5"
     }
 }

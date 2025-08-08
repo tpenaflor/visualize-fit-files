@@ -268,6 +268,84 @@ export class FitFileAnalyzer {
         <p><strong>Device:</strong> ${this.manufacturerInfo.name}</p>
       </div>
     `;
+
+    // Show the Analyze button
+    const analyzeContainer = document.getElementById('analyzeContainer');
+    if (analyzeContainer) {
+      analyzeContainer.style.display = 'block';
+      const analyzeBtn = document.getElementById('analyzeBtn');
+      if (analyzeBtn) {
+        analyzeBtn.onclick = async () => {
+          (analyzeBtn as HTMLButtonElement).disabled = true;
+          analyzeBtn.textContent = 'Analyzing...';
+          // Extract all metrics and values
+          const metricsJson = this.extractMetricsJson();
+          // Trigger a download of metrics JSON
+          try {
+            const blob = new Blob([JSON.stringify(metricsJson, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'activity-metrics.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          } catch {}
+          // Send to LLM (stub: replace with actual API call)
+          const prompt = `Given the activity metrics, can you give an assessment if the activity is hard. Recommend a recovery plan (if needed). What sections or area seems to need some improvement.`;
+          const llmResponse = await this.sendToLLM(metricsJson, prompt);
+          // Show response
+          let resultDiv = document.getElementById('analyzeResult');
+          if (!resultDiv) {
+            resultDiv = document.createElement('div');
+            resultDiv.id = 'analyzeResult';
+            resultDiv.style.margin = '20px auto';
+            resultDiv.style.maxWidth = '700px';
+            resultDiv.style.background = '#f8f9fa';
+            resultDiv.style.borderRadius = '8px';
+            resultDiv.style.padding = '18px';
+            resultDiv.style.boxShadow = '0 2px 8px rgba(102,126,234,0.08)';
+            analyzeContainer.appendChild(resultDiv);
+          }
+          resultDiv.innerHTML = `<h4>AI Assessment</h4><pre style='white-space:pre-wrap;font-size:1rem;'>${llmResponse}</pre>`;
+          (analyzeBtn as HTMLButtonElement).disabled = false;
+          analyzeBtn.textContent = '🔎 Analyze Activity';
+        };
+      }
+    }
+  }
+
+  private extractMetricsJson(): any {
+    // Flatten all available metrics and their values
+    const metrics: any = {};
+    this.fitData.forEach(data => {
+      if (data.type === 'records' || data.type === 'record') {
+        data.records.forEach(record => {
+          Object.keys(record).forEach(key => {
+            if (!metrics[key]) metrics[key] = [];
+            metrics[key].push(record[key]);
+          });
+        });
+      }
+    });
+    return metrics;
+  }
+
+  private async sendToLLM(metricsJson: any, prompt: string): Promise<string> {
+    try {
+      const res = await fetch('http://localhost:8787/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, metrics: metricsJson, activityType: this.activityType })
+      });
+      if (!res.ok) throw new Error(`LLM server error: ${res.status}`);
+      const data = await res.json();
+      return data.result || 'No response.';
+    } catch (err: any) {
+      console.error('LLM error', err);
+      return `AI analysis unavailable. ${err?.message || err}`;
+    }
   }
 
   private clearSelection(): void {
