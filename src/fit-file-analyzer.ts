@@ -278,20 +278,8 @@ export class FitFileAnalyzer {
         analyzeBtn.onclick = async () => {
           (analyzeBtn as HTMLButtonElement).disabled = true;
           analyzeBtn.textContent = 'Analyzing...';
-          // Extract all metrics and values
+          // Extract metrics JSON in-memory only (no file download)
           const metricsJson = this.extractMetricsJson();
-          // Trigger a download of metrics JSON
-          try {
-            const blob = new Blob([JSON.stringify(metricsJson, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'activity-metrics.json';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          } catch {}
           // Send to LLM (Gemini) using env-configured API key
           const prompt = `Given the activity metrics, can you give an assessment if the activity is hard. Recommend a recovery plan (if needed). What sections or area seems to need some improvement.`;
           const llmResponse = await this.sendToLLM(metricsJson, prompt);
