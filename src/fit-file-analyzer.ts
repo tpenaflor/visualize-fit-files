@@ -28,28 +28,10 @@ export class FitFileAnalyzer {
       fileInput.addEventListener('change', this.handleFileUpload.bind(this));
     }
 
-    const testBtn = document.getElementById('testBtn') as HTMLButtonElement;
-    if (testBtn) {
-      testBtn.addEventListener('click', this.loadTestFile.bind(this));
-    }
+  // Test with sample FIT file button removed
   }
 
-  private async loadTestFile(): Promise<void> {
-    console.log('Loading test file...');
-    
-    try {
-      const response = await fetch('./test-run.fit');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const arrayBuffer = await response.arrayBuffer();
-      await this.parseFitFile(arrayBuffer);
-    } catch (error) {
-      console.error('Error loading test file:', error);
-      this.showError('Failed to load test file. Please make sure test-run.fit exists in the public folder.');
-    }
-  }
+  // loadTestFile method removed
 
   private async handleFileUpload(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
