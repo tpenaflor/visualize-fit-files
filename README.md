@@ -1,180 +1,131 @@
 # FIT File Analyzer
 
-A TypeScript web application that processes FIT (Flexible and Interoperable Data Transfer) files and provides interactive data visualization and statistics for fitness activities.
+A TypeScript web application to parse and visualize FIT (Flexible and Interoperable Data Transfer) files with activity-aware metrics and multi-series charts.
 
-## Features
+## What it does
 
-- 📁 **File Upload**: Drag and drop or select FIT files from your device
-- 🧪 **Test Mode**: Built-in sample FIT file for quick testing
-- 📊 **Data Analysis**: Automatically processes and categorizes fitness data
-- 🏭 **Multi-Manufacturer Support**: Works with Garmin, Wahoo, Polar, Suunto, and other FIT devices
-- 📈 **Multi-Metric Charts**: Visualize multiple metrics simultaneously with intelligent Y-axis grouping
-- 📊 **Real-Time Statistics**: View average and maximum values for selected metrics
-- 🎯 **Dynamic Updates**: Charts and statistics update instantly as you select/deselect metrics
-- 🏃 **Multi-Sport Support**: Works with running, cycling, swimming, and other activities
-- 📱 **Responsive Design**: Works on desktop and mobile devices
+- 📁 File upload: choose a .fit file (or use the sample) and see time-series metrics
+- 🧪 Test mode: load the sample FIT file from the UI
+- 🧭 Activity detection: detects running vs cycling to pick correct speed/pace units
+- 🏭 Manufacturer-aware fields: Garmin, Wahoo, or Generic fallback
+- 📈 Multi-metric chart: selecting metrics adds them to a single chart; each series gets its own Y axis group
+- ➖ Unmerge quickly: remove any series from the chart via inline “× metric” buttons
+- 🧹 Add All / Clear All: one-click to add all available metrics or clear selection
+- ✂️ Substantial data filter: only metrics with meaningful data appear in the list
 
-## Supported Metrics
+## Supported metrics and units
 
-- **⚡ Power**: Running/cycling power output in watts
-- **🏃 Speed/Pace**:
-  - **Running**: Pace in minutes per kilometer (min/km)
-  - **Cycling**: Speed in kilometers per hour (km/h)
-- **❤️ Heart Rate**: Heart rate in beats per minute
-- **👟 Cadence**: Step rate in steps per minute
-- **⛰️ Elevation**: Enhanced altitude profile in meters
-- **📏 Stride Length**: Stride length in meters
-- **📊 Vertical Oscillation**: Vertical movement in millimeters
-- **🌡️ Temperature**: Environmental temperature in Celsius
-- **🫁 Respiration Rate**: Breathing rate in breaths per minute
-- **⏱️ Ground Contact Time**: Ground contact time in milliseconds
+The app curates visible metrics by manufacturer and activity. Units and labels adjust automatically.
 
-## Quick Start
+- Garmin (Running)
 
-1. **Install dependencies**:
+  - Pace (min/km)
+  - Cadence (spm)
+  - Heart Rate (bpm)
+  - Power (W)
+  - Elevation (m)
+  - Temperature (°C)
+  - Stride Length (cm)
+  - Vertical Oscillation (mm)
+  - Ground Contact Time (ms)
 
-   ```bash
-   npm install
-   ```
+- Garmin (Cycling)
 
-2. **Start development server**:
+  - Speed (km/h)
+  - Cadence (RPM)
+  - Heart Rate (bpm)
+  - Power (W)
+  - Elevation (m)
+  - Temperature (°C)
 
-   ```bash
-   npm run dev
-   ```
+- Wahoo (Cycling)
 
-3. **Open your browser** to `http://localhost:5173`
+  - Speed (km/h)
+  - Cadence (RPM)
+  - Heart Rate (bpm)
+  - Power (W)
+  - Elevation (m)
+  - Temperature (°C)
+  - Pedal Smoothness (%)
+  - Torque Effectiveness (%)
 
-4. **Upload a FIT file** or click "🧪 Test with sample FIT file" to explore fitness data!
+- Generic fallback
+  - Speed or Pace depending on activity, Heart Rate, Cadence, Power, Elevation, Temperature (when present)
 
-## Project Structure
+## Quick start
+
+1. Install dependencies
+
+```bash
+npm install
+```
+
+2. Run the dev server
+
+```bash
+npm run dev
+```
+
+3. Open http://localhost:5173 and upload a FIT file (or use the test file button).
+
+## How to use
+
+1. Upload a FIT file (or click the test button)
+2. The left panel lists available metrics (filtered to those with substantial data)
+3. Click a metric to add it to the chart (additional metrics merge into the first chart)
+4. Use the “× metric” buttons on the chart to remove individual series
+5. Use Add All / Clear All to quickly toggle everything
+
+## Tech
+
+- TypeScript, Vite, Chart.js, chartjs-adapter-date-fns, date-fns
+- FIT parsing via fit-file-parser (mode: both)
+- Activity-aware speed rendering (Pace for running, Speed for cycling)
+- Manufacturer mappings for Garmin and Wahoo, with a generic fallback
+
+## Project structure
 
 ```
-├── index.html          # Main HTML file with enhanced UI
+├── index.html
 ├── src/
-│   ├── main.ts         # Main application logic with multi-metric support
-│   └── types/          # TypeScript type definitions
+│   ├── fit-file-analyzer.ts     # Orchestrates parsing, detection, UI wiring
+│   ├── charts/
+│   │   ├── multi-chart-manager.ts  # Creates/updates charts, merge/unmerge
+│   │   └── chart-manager.ts        # (legacy single-chart flow)
+│   ├── manufacturers/           # Garmin/Wahoo/generic field mappings
+│   ├── utils/                   # data processing, speed conversion, activity detection
+│   └── types/
 ├── public/
-│   └── test-run.fit    # Sample FIT file for testing
-├── package.json        # Dependencies and scripts
-├── tsconfig.json       # TypeScript configuration
-├── vite.config.ts      # Vite build configuration
-└── README.md           # This file
+│   └── test-run.fit            # Sample file
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+└── README.md
 ```
 
-## How to Use
+## Limitations
 
-1. **Upload a FIT File**:
-
-   - Click "📁 Choose FIT File" and select a `.fit` file from your fitness device
-   - Or click "🧪 Test with sample FIT file" to try it immediately
-
-2. **View File Info**: See basic information about your activity including device and sport type
-
-3. **Select Metrics**: Click on any fitness metrics in the left panel to add them to the chart
-
-   - ✅ Selected metrics show with a checkmark
-   - Multiple metrics can be selected simultaneously
-
-4. **Explore Visualizations**:
-
-   - **Chart**: Multi-metric time-series chart with intelligent Y-axis grouping
-   - **Statistics**: Average and maximum values displayed below the chart
-
-5. **Clear Selection**: Use "Clear All" button to reset and start over
-
-## Key Features Explained
-
-### Multi-Metric Visualization
-
-- Select multiple metrics to see them plotted together
-- Intelligent Y-axis grouping (power, speed, heart rate, etc. on separate axes)
-- Real-time chart updates as you select/deselect metrics
-
-### Statistics Dashboard
-
-- **Average Values**: Mean values across the entire activity
-- **Maximum Values**: Peak performance metrics
-- **Smart Units**: Appropriate units for each metric (W, m/s, bpm, etc.)
-- **Dynamic Updates**: Statistics update instantly with metric selection
-
-### Enhanced Data Processing
-
-- **Multi-Manufacturer Support**: Automatically detects and handles field variations from:
-  - **Garmin**: Enhanced field support (enhanced_speed, enhanced_altitude)
-  - **Wahoo**: Standard and enhanced field mapping
-  - **Polar**: Manufacturer-specific field handling
-  - **Suunto**: Adaptive field detection
-  - **Other devices**: Generic field mapping for unknown manufacturers
-- **Smart Speed Interpretation**: Automatically detects activity type and displays:
-  - Running activities: Pace in min/km
-  - Cycling activities: Speed in km/h
-- Comprehensive data validation and error handling
-
-## Technical Details
-
-- **Frontend**: TypeScript, HTML5, CSS3 with modern gradients and animations
-- **Build Tool**: Vite 4.4.9 with hot module replacement
-- **Charts**: Chart.js 4.3.3 with chartjs-adapter-date-fns for time-based visualization
-- **FIT Parser**: fit-file-parser v1.21.0 with 'both' mode configuration
-- **Styling**: Modern CSS with responsive design, loading animations, and interactive elements
-- **Data Processing**: Enhanced field filtering and multi-metric aggregation
-
-## Browser Support
-
-- Chrome 80+
-- Firefox 75+
-- Safari 13+
-- Edge 80+
+- Only Garmin and Wahoo have curated mappings; other devices use a generic mapping
 
 ## Development
 
 ```bash
-# Install dependencies
+# Install
 npm install
 
-# Start development server with hot reload
+# Dev with HMR
 npm run dev
 
-# Build for production
+# Build
 npm run build
 
-# Preview production build
+# Preview build
 npm run preview
 ```
 
-## File Handling
-
-The application ignores `.fit` files in version control to protect privacy:
-
-- Sample files are available in the `public/` directory
-- Upload your own FIT files for analysis
-- All processing happens locally in your browser
-
 ## Troubleshooting
 
-**File not parsing**:
+- If no metrics appear, the substantial-data filter may be hiding sparse metrics
+- Ensure the FIT file is valid; try the sample to validate your setup
 
-- Ensure your file is a valid FIT file from a supported device
-- Try the sample file first to verify functionality
-
-**No data showing**:
-
-- The app automatically detects your device manufacturer and maps appropriate fields
-- Different manufacturers use different field names (e.g., 'speed' vs 'enhanced_speed')
-- The app will show which manufacturer was detected in the file information
-- Try files from Garmin, Wahoo, Polar, or Suunto devices
-
-**Chart performance**:
-
-- Large FIT files with many data points may take time to process
-- Use the loading indicator to track progress
-
-**Statistics not showing**:
-
-- Statistics only appear when metrics are selected
-- Ensure selected metrics contain valid numeric data
-
----
-
-Built with ❤️ for the fitness community. Perfect for analyzing running, cycling, and other activities from Garmin, Wahoo, and other FIT-compatible devices.
+Built with ❤️ for runners and cyclists.

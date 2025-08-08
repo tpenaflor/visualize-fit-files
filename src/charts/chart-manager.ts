@@ -322,7 +322,7 @@ export class ChartManager {
       'position_lat': 'Latitude',
       'position_long': 'Longitude',
       'timestamp': 'Timestamp',
-      'left_right_balance': 'Left Right Balance',
+  // left_right_balance removed
       'vertical_oscillation': 'Vertical Oscillation',
       'stance_time': 'Ground Contact Time',
       'stance_time_percent': 'Stance Time Percent',

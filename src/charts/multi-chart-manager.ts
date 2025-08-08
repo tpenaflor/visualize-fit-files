@@ -71,22 +71,29 @@ export class MultiChartManager {
     console.log('Available fitData:', this.fitData.length, 'items');
     console.log('Activity type:', this.activityType);
     
-    // Create a new chart for this metric
+    // If the metric is already on any chart, do nothing
+    for (const [, chartInfo] of this.charts) {
+      if (chartInfo.metrics.has(metric)) {
+        console.log('Metric already present on a chart, skipping add:', metric);
+        return;
+      }
+    }
+
+    // If there is at least one existing chart, merge this metric into the first chart
+    const firstChart = this.charts.values().next().value as ChartInfo | undefined;
+    if (firstChart) {
+      firstChart.metrics.add(metric);
+      this.updateChart(firstChart);
+      this.updateChartsTitle();
+      return;
+    }
+
+    // Otherwise create the first chart with this metric
     const chartId = `chart-${++this.chartCounter}`;
     const container = this.createChartContainer(chartId, metric);
-    
-    const metrics = new Set<string>();
-    metrics.add(metric);
-
+    const metrics = new Set<string>([metric]);
     const chart = this.createChart(container, metrics);
-    
-    const chartInfo: ChartInfo = {
-      id: chartId,
-      metrics,
-      chart,
-      container
-    };
-
+    const chartInfo: ChartInfo = { id: chartId, metrics, chart, container };
     this.charts.set(chartId, chartInfo);
     this.updateChartsTitle();
   }
@@ -631,7 +638,7 @@ export class MultiChartManager {
       'position_lat': 'Latitude',
       'position_long': 'Longitude',
       'timestamp': 'Timestamp',
-      'left_right_balance': 'Left Right Balance',
+  // left_right_balance removed
       'vertical_oscillation': 'Vertical Oscillation',
       'stance_time': 'Ground Contact Time',
       'stance_time_percent': 'Stance Time Percent',
@@ -639,7 +646,13 @@ export class MultiChartManager {
       'step_length': 'Stride Length',
       'total_strokes': 'Stroke Rate',
       'stroke_type': 'Stroke Type',
-      'respiration_rate': 'Respiration Rate'
+  'respiration_rate': 'Respiration Rate',
+  // Wahoo cycling dynamics
+  'left_torque_effectiveness': 'Torque Effectiveness',
+  'right_torque_effectiveness': 'Torque Effectiveness',
+  'left_pedal_smoothness': 'Pedal Smoothness',
+  'right_pedal_smoothness': 'Pedal Smoothness',
+  // gear change/event keys intentionally omitted for now
     };
     
     return displayNames[fieldName] || fieldName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -660,7 +673,10 @@ export class MultiChartManager {
       'Grade': '%',
       'Stride Length': 'cm',
       'Ground Contact Time': 'ms',
-      'Respiration Rate': 'breaths/min'
+  'Respiration Rate': 'breaths/min',
+  // Left/Right Balance removed
+  'Pedal Smoothness': '%',
+  'Torque Effectiveness': '%'
     };
     
     return labels[metric] || metric;

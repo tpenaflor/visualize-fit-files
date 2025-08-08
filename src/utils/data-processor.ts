@@ -7,6 +7,8 @@ export class DataProcessor {
     _manufacturerInfo: ManufacturerInfo, 
     activityType: ActivityType
   ): FitData[] {
+    // Note: Gear change event stamping removed per request.
+
     const processedData = fitData.map(data => ({
       ...data,
       records: data.records.map(record => {
@@ -21,6 +23,8 @@ export class DataProcessor {
             processedRecord[speedLabel.toLowerCase()] = convertedSpeed;
           }
         }
+
+  // Left/Right Balance support removed
         
         return processedRecord;
       })
@@ -31,68 +35,58 @@ export class DataProcessor {
 
   static extractAvailableMetrics(fitData: FitData[], manufacturerInfo: ManufacturerInfo, _activityType: ActivityType): string[] {
     const fieldMappings = manufacturerInfo.fieldMappings;
-    const availableFields = new Set<string>();
-    
-    // Collect all available fields from the data
-    fitData.forEach(data => {
-      data.records.forEach(record => {
-        Object.keys(record).forEach(key => {
-          if (record[key] !== null && record[key] !== undefined) {
-            availableFields.add(key);
-          }
+
+    // Focus on time-series records only (avoid sessions/laps inflating counts)
+    const recordData = fitData.filter(d => d.type === 'records' || d.type === 'record');
+    const totalRecordCount = recordData.reduce((sum, d) => sum + d.records.length, 0);
+
+    // Quick exit if no records
+    if (totalRecordCount === 0) return [];
+
+    // Build a set of present fields (non-null in any record)
+    const presentFields = new Set<string>();
+    recordData.forEach(d => {
+      d.records.forEach(r => {
+        Object.keys(r).forEach(k => {
+          if (r[k] !== null && r[k] !== undefined) presentFields.add(k);
         });
       });
     });
-    
-    console.log('Available fields in data:', Array.from(availableFields));
-    console.log('Manufacturer field mappings:', fieldMappings);
-    
-    // Only include metrics that have actual data
+
+    // Define thresholds for what counts as "substantial" data
+    const nonZeroMin = Math.max(3, Math.floor(totalRecordCount * 0.01)); // >=1% or at least 3
+    const nonNullMin = Math.max(10, Math.floor(totalRecordCount * 0.02)); // >=2% or at least 10
+
     const availableMetrics = new Set<string>();
-    
+
     Object.entries(fieldMappings).forEach(([displayName, possibleFields]) => {
-      const hasDataForAnyField = possibleFields.some(field => {
-        const hasField = availableFields.has(field);
-        if (hasField) {
-          // Check if any record actually has meaningful values for this field
-          let hasValidData = false;
-          let nonZeroCount = 0;
-          let totalCount = 0;
-          
-          fitData.forEach(data => {
-            data.records.forEach(record => {
-              if (record[field] !== null && record[field] !== undefined) {
-                totalCount++;
-                if (record[field] !== 0) {
-                  nonZeroCount++;
-                  hasValidData = true;
-                }
-              }
-            });
-          });
-          
-          // Include metric if:
-          // 1. Has any non-zero values, OR
-          // 2. Has consistent zero values (might be valid for some metrics)
-          const shouldInclude = hasValidData || (totalCount > 0 && totalCount > 100); // At least 100 data points
-          console.log(`Field ${field}: hasValidData=${hasValidData}, nonZeroCount=${nonZeroCount}, totalCount=${totalCount}, shouldInclude=${shouldInclude}`);
-          return shouldInclude;
+      const include = possibleFields.some(field => {
+        if (!presentFields.has(field)) return false;
+
+        let nonNullCount = 0;
+        let nonZeroCount = 0;
+
+        for (const d of recordData) {
+          for (const r of d.records) {
+            const v = r[field];
+            if (v !== null && v !== undefined) {
+              nonNullCount++;
+              if (typeof v === 'number' && v !== 0) nonZeroCount++;
+            }
+          }
         }
-        return false;
+
+        // A metric is substantial if we have enough non-zero values OR enough non-null (constant but meaningful)
+        const substantial = nonZeroCount >= nonZeroMin || nonNullCount >= nonNullMin;
+        // Debug line kept light to avoid noise
+        // console.debug(`[metric-check] ${displayName}/${field}: nonZero=${nonZeroCount} (>=${nonZeroMin}) nonNull=${nonNullCount} (>=${nonNullMin}) -> ${substantial}`);
+        return substantial;
       });
-      
-      if (hasDataForAnyField) {
-        // Use the display name from the manufacturer field mappings directly
-        availableMetrics.add(displayName);
-        console.log(`✓ Including metric: ${displayName} (has data)`);
-      } else {
-        console.log(`✗ Excluding metric: ${displayName} (no data)`);
-      }
+
+      if (include) availableMetrics.add(displayName);
     });
-    
-    const result = Array.from(availableMetrics).sort((a, b) => a.localeCompare(b));
-    console.log('Final available metrics:', result);
-    return result;
+
+    return Array.from(availableMetrics).sort((a, b) => a.localeCompare(b));
   }
 
   static calculateStatistics(fitData: FitData[], selectedMetrics: Set<string>, manufacturerInfo: ManufacturerInfo): { [key: string]: any } {

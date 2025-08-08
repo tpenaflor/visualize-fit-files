@@ -15,11 +15,23 @@ export function getGarminFieldMappings(activityType?: ActivityType): { [key: str
       'Ground Contact Time': ['stance_time']
     };
   }
+
+  // Cycling-specific minimal set
+  if (activityType === 'cycling') {
+    return {
+      'Speed': ['enhanced_speed', 'speed'],
+      'Elevation': ['enhanced_altitude', 'altitude'],
+      'Heart Rate': ['heart_rate', 'hr'],
+      'Cadence': ['cadence'],
+      'Power': ['power'],
+      'Temperature': ['temperature']
+    };
+  }
   
   // Default mappings for other activities (cycling, etc.)
   return {
     'Power': ['power'],
-    'Pace': ['enhanced_speed', 'speed'],
+    'Speed': ['enhanced_speed', 'speed'],
     'Heart Rate': ['heart_rate', 'hr'],
     'Cadence': ['cadence'],
     'Stride Length': ['step_length'],

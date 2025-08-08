@@ -11,7 +11,7 @@ export function getGenericFieldMappings(): { [key: string]: string[] } {
     'Grade': ['grade'],
     'Position': ['position_lat', 'position_long'],
     'Timestamp': ['timestamp'],
-    'Left Right Balance': ['left_right_balance'],
+  // Left/Right Balance removed
     'Vertical Oscillation': ['vertical_oscillation'],
     'Stance Time': ['stance_time'],
     'Stance Time Percent': ['stance_time_percent'],
