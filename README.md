@@ -5,7 +5,6 @@ A TypeScript web application to parse and visualize FIT (Flexible and Interopera
 ## What it does
 
 - 📁 File upload: choose a .fit file and see time-series metrics
-  
 - 🧭 Activity detection: detects running vs cycling to pick correct speed/pace units
 - 🏭 Manufacturer-aware fields: Garmin, Wahoo, or Generic fallback
 - 📈 Multi-metric chart: selecting metrics adds them to a single chart; each series gets its own Y axis group
