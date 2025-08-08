@@ -10,6 +10,9 @@ yarn-error.log*
 # Debug files
 debug-*
 
+# Exported analysis files
+activity-metrics*.json
+
 # Documentation (temporary)
 REFACTORING.md
 

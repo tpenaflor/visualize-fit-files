@@ -292,7 +292,7 @@ export class FitFileAnalyzer {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
           } catch {}
-          // Send to LLM (stub: replace with actual API call)
+          // Send to LLM (Gemini) using env-configured API key
           const prompt = `Given the activity metrics, can you give an assessment if the activity is hard. Recommend a recovery plan (if needed). What sections or area seems to need some improvement.`;
           const llmResponse = await this.sendToLLM(metricsJson, prompt);
           // Show response
@@ -317,14 +317,39 @@ export class FitFileAnalyzer {
   }
 
   private extractMetricsJson(): any {
-    // Flatten all available metrics and their values
-    const metrics: any = {};
+    // Only include metrics that are available for charting
+    if (!this.manufacturerInfo) return {};
+
+    const available = DataProcessor.extractAvailableMetrics(
+      this.fitData,
+      this.manufacturerInfo,
+      this.activityType
+    );
+
+    // Build allowed raw field keys from manufacturer mappings
+    const allowedFields = new Set<string>();
+    for (const displayName of available) {
+      const fields = this.manufacturerInfo.fieldMappings[displayName] || [];
+      fields.forEach(f => allowedFields.add(f));
+      // Handle activity-aware speed label (pace for running, speed for cycling)
+      const speedLabel = (displayName === 'Speed' || displayName === 'Pace')
+        ? displayName.toLowerCase()
+        : null;
+      if (speedLabel) allowedFields.add(speedLabel);
+    }
+
+    const metrics: Record<string, any[]> = {};
     this.fitData.forEach(data => {
       if (data.type === 'records' || data.type === 'record') {
         data.records.forEach(record => {
           Object.keys(record).forEach(key => {
-            if (!metrics[key]) metrics[key] = [];
-            metrics[key].push(record[key]);
+            if (!allowedFields.has(key)) return;
+            const v = record[key];
+            // Only collect numeric values to keep the JSON clean for analysis
+            if (typeof v === 'number') {
+              if (!metrics[key]) metrics[key] = [];
+              metrics[key].push(v);
+            }
           });
         });
       }
@@ -334,16 +359,40 @@ export class FitFileAnalyzer {
 
   private async sendToLLM(metricsJson: any, prompt: string): Promise<string> {
     try {
-      const res = await fetch('http://localhost:8787/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, metrics: metricsJson, activityType: this.activityType })
+      // Use Google Gemini in the browser via API key from Vite env
+      const apiKey = (window as any)?.VITE_GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+      if (!apiKey) throw new Error('Missing VITE_GEMINI_API_KEY');
+
+      // Lazy import to avoid bundling if unused
+      const mod = await import('@google/generative-ai');
+      const genAI = new mod.GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+      // Compact the payload to reduce token usage
+      const summary: any = { activityType: this.activityType };
+      const keys = Object.keys(metricsJson);
+      for (const k of keys) {
+        const vals = metricsJson[k];
+        if (!Array.isArray(vals) || vals.length === 0) continue;
+        const sample = [vals[0], vals[Math.floor(vals.length/2)], vals[vals.length-1]];
+        // add min/max/avg for numeric arrays
+        const nums = vals.filter((v: any) => typeof v === 'number');
+        let min: number | undefined, max: number | undefined, avg: number | undefined;
+        if (nums.length) {
+          min = Math.min(...nums);
+          max = Math.max(...nums);
+          avg = nums.reduce((a: number, b: number) => a + b, 0) / nums.length;
+        }
+        summary[k] = { count: vals.length, sample, min, max, avg };
+      }
+
+      const fullPrompt = `${prompt}\n\nKeep it concise (<= 200 words). Use the provided aggregates.`;
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: fullPrompt }, { text: JSON.stringify(summary) }]}]
       });
-      if (!res.ok) throw new Error(`LLM server error: ${res.status}`);
-      const data = await res.json();
-      return data.result || 'No response.';
+      return result.response.text();
     } catch (err: any) {
-      console.error('LLM error', err);
+      console.error('Gemini error', err);
       return `AI analysis unavailable. ${err?.message || err}`;
     }
   }

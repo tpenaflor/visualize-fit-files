@@ -4,8 +4,8 @@ A TypeScript web application to parse and visualize FIT (Flexible and Interopera
 
 ## What it does
 
-- 📁 File upload: choose a .fit file (or use the sample) and see time-series metrics
-- 🧪 Test mode: load the sample FIT file from the UI
+- 📁 File upload: choose a .fit file and see time-series metrics
+  
 - 🧭 Activity detection: detects running vs cycling to pick correct speed/pace units
 - 🏭 Manufacturer-aware fields: Garmin, Wahoo, or Generic fallback
 - 📈 Multi-metric chart: selecting metrics adds them to a single chart; each series gets its own Y axis group
@@ -66,11 +66,21 @@ npm install
 npm run dev
 ```
 
-3. Open http://localhost:5173 and upload a FIT file (or use the test file button).
+3. Open http://localhost:5173 and upload a FIT file.
+
+4. (Optional) AI Analyze
+
+- Create a .env file with your key:
+
+```bash
+echo "VITE_GEMINI_API_KEY=your_api_key_here" > .env
+```
+
+- Click “Analyze Activity” after loading a FIT file.
 
 ## How to use
 
-1. Upload a FIT file (or click the test button)
+1. Upload a FIT file
 2. The left panel lists available metrics (filtered to those with substantial data)
 3. Click a metric to add it to the chart (additional metrics merge into the first chart)
 4. Use the “× metric” buttons on the chart to remove individual series
@@ -96,7 +106,7 @@ npm run dev
 │   ├── utils/                   # data processing, speed conversion, activity detection
 │   └── types/
 ├── public/
-│   └── test-run.fit            # Sample file
+│   └── (static assets)
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts
