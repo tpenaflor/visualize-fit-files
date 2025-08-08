@@ -1,6 +1,6 @@
 import { Chart, ChartConfiguration } from 'chart.js';
 import 'chartjs-adapter-date-fns';
-import { FitData, ChartDataPoint, MetricGroup, ActivityType, ManufacturerInfo } from '../types';
+import { FitData, ChartDataPoint, MetricGroup, ActivityType } from '../types';
 import { SpeedConverter } from '../utils/speed-converter';
 
 interface ChartInfo {

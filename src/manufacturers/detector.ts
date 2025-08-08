@@ -1,10 +1,10 @@
-import { ManufacturerInfo } from '../types';
+import { ManufacturerInfo, ActivityType } from '../types';
 import { getGarminFieldMappings } from './garmin';
 import { getWahooFieldMappings } from './wahoo';
 import { getGenericFieldMappings } from './generic';
 
 export class ManufacturerDetector {
-  static detect(data: any): ManufacturerInfo {
+  static detect(data: any, activityType?: ActivityType): ManufacturerInfo {
     // Try multiple sources for manufacturer information
     let manufacturer = '';
     let productName = '';
@@ -46,7 +46,7 @@ export class ManufacturerDetector {
         productName.toLowerCase().includes('garmin')) {
       return {
         name: 'Garmin',
-        fieldMappings: getGarminFieldMappings()
+        fieldMappings: getGarminFieldMappings(activityType)
       };
     }
     

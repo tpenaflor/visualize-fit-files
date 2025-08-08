@@ -94,9 +94,11 @@ export class FitFileAnalyzer {
   }
 
   private processParsedData(data: any): void {
-    // Detect manufacturer and activity type
-    this.manufacturerInfo = ManufacturerDetector.detect(data);
+    // Detect activity type first
     this.activityType = ActivityDetector.detect(data);
+    
+    // Then detect manufacturer with activity type context
+    this.manufacturerInfo = ManufacturerDetector.detect(data, this.activityType);
 
     console.log('Detected manufacturer:', this.manufacturerInfo);
     console.log('Detected activity type:', this.activityType);
@@ -108,7 +110,7 @@ export class FitFileAnalyzer {
     this.fitData = DataProcessor.processRecords(this.fitData, this.manufacturerInfo, this.activityType);
 
     // Set data in MultiChartManager
-    this.multiChartManager.setData(this.fitData, this.activityType, this.manufacturerInfo);
+    this.multiChartManager.setData(this.fitData, this.activityType);
 
     // Display results
     this.displayResults();

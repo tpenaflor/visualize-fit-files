@@ -8,7 +8,7 @@ yarn-error.log*
 *.fit
 
 # Debug files
-debug-*.js
+debug-*
 
 # Documentation (temporary)
 REFACTORING.md

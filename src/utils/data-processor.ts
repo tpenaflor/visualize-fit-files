@@ -29,7 +29,7 @@ export class DataProcessor {
     return processedData;
   }
 
-  static extractAvailableMetrics(fitData: FitData[], manufacturerInfo: ManufacturerInfo, activityType: ActivityType): string[] {
+  static extractAvailableMetrics(fitData: FitData[], manufacturerInfo: ManufacturerInfo, _activityType: ActivityType): string[] {
     const fieldMappings = manufacturerInfo.fieldMappings;
     const availableFields = new Set<string>();
     
@@ -45,6 +45,7 @@ export class DataProcessor {
     });
     
     console.log('Available fields in data:', Array.from(availableFields));
+    console.log('Manufacturer field mappings:', fieldMappings);
     
     // Only include metrics that have actual data
     const availableMetrics = new Set<string>();
@@ -73,16 +74,17 @@ export class DataProcessor {
           // Include metric if:
           // 1. Has any non-zero values, OR
           // 2. Has consistent zero values (might be valid for some metrics)
-          return hasValidData || (totalCount > 0 && totalCount > 100); // At least 100 data points
+          const shouldInclude = hasValidData || (totalCount > 0 && totalCount > 100); // At least 100 data points
+          console.log(`Field ${field}: hasValidData=${hasValidData}, nonZeroCount=${nonZeroCount}, totalCount=${totalCount}, shouldInclude=${shouldInclude}`);
+          return shouldInclude;
         }
         return false;
       });
       
       if (hasDataForAnyField) {
-        // Use activity-aware display name by checking the first possible field
-        const displayNameFromField = this.getDisplayName(possibleFields[0], activityType);
-        availableMetrics.add(displayNameFromField);
-        console.log(`✓ Including metric: ${displayNameFromField} (has data)`);
+        // Use the display name from the manufacturer field mappings directly
+        availableMetrics.add(displayName);
+        console.log(`✓ Including metric: ${displayName} (has data)`);
       } else {
         console.log(`✗ Excluding metric: ${displayName} (no data)`);
       }
@@ -93,33 +95,20 @@ export class DataProcessor {
     return result;
   }
 
-  static calculateStatistics(fitData: FitData[], selectedMetrics: Set<string>, activityType: ActivityType): { [key: string]: any } {
+  static calculateStatistics(fitData: FitData[], selectedMetrics: Set<string>, manufacturerInfo: ManufacturerInfo): { [key: string]: any } {
     const stats: { [key: string]: any } = {};
+    const fieldMappings = manufacturerInfo.fieldMappings;
     
     selectedMetrics.forEach(metric => {
-      const values: number[] = [];
-      
-      fitData.forEach(data => {
-        data.records.forEach(record => {
-          Object.keys(record).forEach(key => {
-            const displayName = DataProcessor.getDisplayName(key, activityType);
-            if (displayName === metric && record[key] !== null && record[key] !== undefined) {
-              const value = Number(record[key]);
-              if (!isNaN(value)) {
-                values.push(value);
-              }
-            }
-          });
-        });
-      });
+      const values = this.extractValuesForMetric(fitData, metric, fieldMappings);
       
       if (values.length > 0) {
-        const sorted = values.sort((a, b) => a - b);
+        const sortedValues = [...values].sort((a, b) => a - b);
         stats[metric] = {
           min: Math.min(...values),
           max: Math.max(...values),
           avg: values.reduce((sum, val) => sum + val, 0) / values.length,
-          median: sorted[Math.floor(sorted.length / 2)],
+          median: sortedValues[Math.floor(sortedValues.length / 2)],
           count: values.length
         };
       }
@@ -128,24 +117,21 @@ export class DataProcessor {
     return stats;
   }
 
-  private static getDisplayName(fieldName: string, activityType: ActivityType): string {
-    const displayNames: { [key: string]: string } = {
-      'heart_rate': 'Heart Rate',
-      'hr': 'Heart Rate',
-      'speed': SpeedConverter.getSpeedLabel(activityType),
-      'enhanced_speed': SpeedConverter.getSpeedLabel(activityType),
-      'cadence': 'Cadence',
-      'power': 'Power',
-      'distance': 'Distance',
-      'altitude': 'Altitude',
-      'enhanced_altitude': 'Altitude',
-      'temperature': 'Temperature',
-      'calories': 'Calories',
-      'grade': 'Grade',
-      'position_lat': 'Latitude',
-      'position_long': 'Longitude'
-    };
+  private static extractValuesForMetric(fitData: FitData[], metric: string, fieldMappings: { [key: string]: string[] }): number[] {
+    const values: number[] = [];
+    const fieldsForMetric = fieldMappings[metric] || [];
     
-    return displayNames[fieldName] || fieldName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    fitData.forEach(data => {
+      data.records.forEach(record => {
+        fieldsForMetric.forEach(fieldName => {
+          const value = record[fieldName];
+          if (value !== null && value !== undefined && !isNaN(Number(value))) {
+            values.push(Number(value));
+          }
+        });
+      });
+    });
+    
+    return values;
   }
 }
