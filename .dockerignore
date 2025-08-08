@@ -1,0 +1,18 @@
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+/dist
+/build
+
+# Vite cache
+/.vite
+
+# Local env files (pass API key at build time instead)
+.env
+.env.*
+
+# MacOS
+.DS_Store
