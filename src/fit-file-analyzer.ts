@@ -25,7 +25,7 @@ export class FitFileAnalyzer {
   private initializeEventListeners(): void {
     const fileInput = document.getElementById('fileInput') as HTMLInputElement;
     if (fileInput) {
-      fileInput.addEventListener('change', this.handleFileUpload.bind(this));
+  fileInput.addEventListener('change', this.handleFileUpload.bind(this));
     }
 
   // Test with sample FIT file button removed
@@ -40,6 +40,8 @@ export class FitFileAnalyzer {
     if (!file) return;
 
     try {
+  // Clear prior AI analysis when a new file is loaded
+  this.clearAnalysis();
       const arrayBuffer = await file.arrayBuffer();
       await this.parseFitFile(arrayBuffer);
     } catch (error) {
@@ -280,8 +282,8 @@ export class FitFileAnalyzer {
           analyzeBtn.textContent = 'Analyzing...';
           // Extract metrics JSON in-memory only (no file download)
           const metricsJson = this.extractMetricsJson();
-          // Send to LLM (Gemini) using env-configured API key
-          const prompt = `Given the activity metrics, can you give an assessment if the activity is hard. Recommend a recovery plan (if needed). What sections or area seems to need some improvement.`;
+          // Send to LLM (Gemini) using backend; add guidance to exclude zero cadence from averages
+          const prompt = `Given the activity metrics, can you give an assessment if the activity is hard. Recommend a recovery plan (if needed). What sections or area seems to need some improvement. When calculating cadence averages, exclude any zero values (coasting/stops) so average cadence reflects pedaling only.`;
           const llmResponse = await this.sendToLLM(metricsJson, prompt);
           // Show response
           let resultDiv = document.getElementById('analyzeResult');
@@ -347,40 +349,45 @@ export class FitFileAnalyzer {
 
   private async sendToLLM(metricsJson: any, prompt: string): Promise<string> {
     try {
-      // Use Google Gemini in the browser via API key from Vite env
-      const apiKey = (window as any)?.VITE_GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
-      if (!apiKey) throw new Error('Missing VITE_GEMINI_API_KEY');
-
-      // Lazy import to avoid bundling if unused
-      const mod = await import('@google/generative-ai');
-      const genAI = new mod.GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-      // Compact the payload to reduce token usage
+      // Compact the payload to reduce size
       const summary: any = { activityType: this.activityType };
       const keys = Object.keys(metricsJson);
       for (const k of keys) {
         const vals = metricsJson[k];
         if (!Array.isArray(vals) || vals.length === 0) continue;
         const sample = [vals[0], vals[Math.floor(vals.length/2)], vals[vals.length-1]];
-        // add min/max/avg for numeric arrays
         const nums = vals.filter((v: any) => typeof v === 'number');
         let min: number | undefined, max: number | undefined, avg: number | undefined;
+        let avgNonZero: number | undefined;
         if (nums.length) {
           min = Math.min(...nums);
           max = Math.max(...nums);
           avg = nums.reduce((a: number, b: number) => a + b, 0) / nums.length;
+          const nonZero = nums.filter((n: number) => n !== 0);
+          if (nonZero.length) {
+            avgNonZero = nonZero.reduce((a: number, b: number) => a + b, 0) / nonZero.length;
+          }
         }
         summary[k] = { count: vals.length, sample, min, max, avg };
+        // Add cadence-specific average excluding zeros for LLM consumption
+        if (k.toLowerCase() === 'cadence' && avgNonZero !== undefined) {
+          summary[k].avgNonZero = avgNonZero;
+          // Convenience top-level alias
+          summary.cadence_avg_non_zero = avgNonZero;
+        }
       }
 
       const fullPrompt = `${prompt}\n\nKeep it concise (<= 200 words). Use the provided aggregates.`;
-      const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: fullPrompt }, { text: JSON.stringify(summary) }]}]
+      const resp = await fetch('/api/analyze', {
+        method: 'POST',
+  headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ metrics: summary, prompt: fullPrompt })
       });
-      return result.response.text();
+      if (!resp.ok) throw new Error(`Backend error: ${resp.status}`);
+      const data = await resp.json();
+      return data?.analysis || 'No analysis returned.';
     } catch (err: any) {
-      console.error('Gemini error', err);
+      console.error('AI analysis error', err);
       return `AI analysis unavailable. ${err?.message || err}`;
     }
   }
@@ -426,6 +433,21 @@ export class FitFileAnalyzer {
           <p>${message}</p>
         </div>
       `;
+    }
+  }
+
+  private clearAnalysis(): void {
+    const analyzeContainer = document.getElementById('analyzeContainer');
+    if (analyzeContainer) {
+      const resultDiv = document.getElementById('analyzeResult');
+      if (resultDiv && resultDiv.parentElement === analyzeContainer) {
+        resultDiv.remove();
+      }
+      const analyzeBtn = document.getElementById('analyzeBtn') as HTMLButtonElement | null;
+      if (analyzeBtn) {
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = '🔎 Analyze Activity';
+      }
     }
   }
 }
